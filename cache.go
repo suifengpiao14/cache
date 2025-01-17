@@ -21,20 +21,13 @@ type Cache interface {
 	Set(key string, data any, duration time.Duration) error
 }
 
-var RedisV8Getter = OnceValue(func() *reidsv8.Client {
-	err := errors.New("RedisV8Instance 未初始化")
-	panic(err)
-})
+//缓存实例，默认使用内存缓存
 
-// 使用reids 作为缓存中间件，必须先初始化RedisV8Getter或者RedisV9Getter
-var RedisV9Getter = OnceValue(func() *reidsv9.Client {
-	err := errors.New("RedisV9Instance 未初始化")
-	panic(err)
-})
+var CacheInstance Cache = MemeryCache()
 
-func Remember(cache Cache, key string, duration time.Duration, dst any, fetchFunc func() (any, error)) error {
+func Remember(key string, duration time.Duration, dst any, fetchFunc func() (any, error)) error {
 	md5Key := Md5Lower(key)
-	exists, err := cache.Get(md5Key, dst)
+	exists, err := CacheInstance.Get(md5Key, dst)
 	if err != nil {
 		return err
 	}
@@ -45,7 +38,7 @@ func Remember(cache Cache, key string, duration time.Duration, dst any, fetchFun
 	if err != nil {
 		return err
 	}
-	err = cache.Set(md5Key, data, duration)
+	err = CacheInstance.Set(md5Key, data, duration)
 	if err != nil {
 		return err
 	}
@@ -54,15 +47,18 @@ func Remember(cache Cache, key string, duration time.Duration, dst any, fetchFun
 }
 
 func RedisV8Cache(client func() *reidsv8.Client) Cache {
-	return _RedisV8Cache{}
+	return _RedisV8Cache{
+		client: OnceValue(client),
+	}
 }
 
 type _RedisV8Cache struct {
+	client func() *reidsv8.Client
 }
 
 func (r _RedisV8Cache) Get(key string, data any) (exists bool, err error) {
 	ctx := context.Background()
-	b, err := RedisV8Getter().Get(ctx, key).Bytes()
+	b, err := r.client().Get(ctx, key).Bytes()
 	if err != nil {
 		if errors.Is(err, reidsv8.Nil) { // 是redis.Nil 错误，屏蔽错误，exists 返回false
 			return false, nil
@@ -83,7 +79,7 @@ func (r _RedisV8Cache) Set(key string, data any, duration time.Duration) (err er
 	if err != nil {
 		return err
 	}
-	_, err = RedisV8Getter().Set(ctx, key, b, duration).Result()
+	_, err = r.client().Set(ctx, key, b, duration).Result()
 	if err != nil {
 		return err
 	}
@@ -91,17 +87,20 @@ func (r _RedisV8Cache) Set(key string, data any, duration time.Duration) (err er
 }
 
 func RedisV9Cache(client func() *reidsv9.Client) Cache {
-	return _RedisV9Cache{}
+	return _RedisV9Cache{
+		client: OnceValue(client),
+	}
 }
 
 type _RedisV9Cache struct {
+	client func() *reidsv9.Client
 }
 
 func (r _RedisV9Cache) Get(key string, data any) (exists bool, err error) {
 	ctx := context.Background()
-	b, err := RedisV9Getter().Get(ctx, key).Bytes()
+	b, err := r.client().Get(ctx, key).Bytes()
 	if err != nil {
-		if errors.Is(err, reidsv8.Nil) { // 是redis.Nil 错误，屏蔽错误，exists 返回false
+		if errors.Is(err, reidsv9.Nil) { // 是redis.Nil 错误，屏蔽错误，exists 返回false
 			return false, nil
 		}
 		return false, err
@@ -120,7 +119,7 @@ func (r _RedisV9Cache) Set(key string, data any, duration time.Duration) (err er
 	if err != nil {
 		return err
 	}
-	_, err = RedisV9Getter().Set(ctx, key, b, duration).Result()
+	_, err = r.client().Set(ctx, key, b, duration).Result()
 	if err != nil {
 		return err
 	}
