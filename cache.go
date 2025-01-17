@@ -42,7 +42,7 @@ func Remember(key string, duration time.Duration, dst any, fetchFunc func() (any
 	if err != nil {
 		return err
 	}
-	reflect.Indirect(reflect.ValueOf(dst)).Set(reflect.Indirect(reflect.ValueOf(data)))
+	SetReflectValue(dst, data)
 	return nil
 }
 
@@ -139,7 +139,7 @@ func (m _MemeryCache) Get(key string, dst any) (exists bool, err error) {
 	if !found {
 		return false, nil
 	}
-	reflect.Indirect(reflect.ValueOf(dst)).Set(reflect.Indirect(reflect.ValueOf(resulany)))
+	SetReflectValue(dst, resulany)
 	return true, nil
 }
 
@@ -184,4 +184,14 @@ func Md5Lower(str string) string {
 	h := md5.New()
 	h.Write([]byte(str))
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+// SetReflectValue 设置反射值，如果类型不匹配，会自动转换
+func SetReflectValue(dst any, src any) {
+	rdst := reflect.Indirect(reflect.ValueOf(dst))
+	rsrc := reflect.Indirect(reflect.ValueOf(src))
+	if rsrc.CanConvert(rdst.Type()) {
+		rsrc = rsrc.Convert(rdst.Type())
+	}
+	rdst.Set(rsrc)
 }

@@ -16,7 +16,26 @@ type user struct {
 	Name string
 }
 
-func testCase() (users []user, err error) {
+func setRedisv8Cache() {
+	cache.CacheInstance = cache.RedisV8Cache(func() *redisv8.Client {
+		return redisv8.NewClient(&redisv8.Options{
+			Addr:     "10.0.11.125:6379",
+			Password: "", // no password set
+			DB:       0,  // use default DB
+		})
+	})
+}
+func setRedisv9Cache() {
+	cache.CacheInstance = cache.RedisV9Cache(func() *redisv9.Client {
+		return redisv9.NewClient(&redisv9.Options{
+			Addr:     "10.0.11.125:6379",
+			Password: "", // no password set
+			DB:       0,  // use default DB
+		})
+	})
+}
+
+func testCaseStruct() (users []user, err error) {
 	key := "usercache"
 	users = make([]user, 0)
 	err = cache.Remember(key, 20*time.Second, &users, func() (any, error) {
@@ -27,36 +46,113 @@ func testCase() (users []user, err error) {
 	return users, err
 }
 
-func TestMemeryCache(t *testing.T) {
-	users, err := testCase()
-	require.NoError(t, err)
-	fmt.Println(users)
+func testCaseInt64() (count int64, err error) {
+	key := "usercache"
+	err = cache.Remember(key, 20*time.Second, &count, func() (any, error) {
+		fmt.Println("load from db")
+		return 52, nil
+	})
+	return count, err
+}
+func testCaseInt() (count int, err error) {
+	key := "usercache"
+	err = cache.Remember(key, 20*time.Second, &count, func() (any, error) {
+		fmt.Println("load from db")
+		return 52, nil
+	})
+	return count, err
+}
+func testCaseBool() (exists bool, err error) {
+	key := "usercache"
+	err = cache.Remember(key, 20*time.Second, &exists, func() (any, error) {
+		fmt.Println("load from db")
+		return true, nil
+	})
+	return exists, err
 }
 
-func TestRedisv9Cache(t *testing.T) {
-	cache.CacheInstance = cache.RedisV9Cache(func() *redisv9.Client {
-		return redisv9.NewClient(&redisv9.Options{
-			Addr:     "10.0.11.125:6379",
-			Password: "", // no password set
-			DB:       0,  // use default DB
-		})
+func TestStruct(t *testing.T) {
+	t.Run("redisv8", func(t *testing.T) {
+		setRedisv8Cache()
+		users, err := testCaseStruct()
+		require.NoError(t, err)
+		fmt.Println(users)
 	})
-	users, err := testCase()
-	require.NoError(t, err)
-	fmt.Println(users)
+
+	t.Run("redisv9", func(t *testing.T) {
+		setRedisv9Cache()
+		users, err := testCaseStruct()
+		require.NoError(t, err)
+		fmt.Println(users)
+	})
+	t.Run("memery", func(t *testing.T) {
+		users, err := testCaseStruct()
+		require.NoError(t, err)
+		fmt.Println(users)
+	})
+}
+
+func TestInt64(t *testing.T) {
+	t.Run("redisv8", func(t *testing.T) {
+		setRedisv8Cache()
+		count, err := testCaseInt64()
+		require.NoError(t, err)
+		fmt.Println(count)
+	})
+
+	t.Run("redisv9", func(t *testing.T) {
+		setRedisv9Cache()
+		count, err := testCaseInt64()
+		require.NoError(t, err)
+		fmt.Println(count)
+	})
+	t.Run("memery", func(t *testing.T) {
+		count, err := testCaseInt64()
+		require.NoError(t, err)
+		fmt.Println(count)
+	})
+
+}
+func TestInt(t *testing.T) {
+	t.Run("redisv8", func(t *testing.T) {
+		setRedisv8Cache()
+		count, err := testCaseInt()
+		require.NoError(t, err)
+		fmt.Println(count)
+	})
+
+	t.Run("redisv9", func(t *testing.T) {
+		setRedisv9Cache()
+		count, err := testCaseInt()
+		require.NoError(t, err)
+		fmt.Println(count)
+	})
+	t.Run("memery", func(t *testing.T) {
+		count, err := testCaseInt()
+		require.NoError(t, err)
+		fmt.Println(count)
+	})
 
 }
 
-func TestRedisv8Cache(t *testing.T) {
-	cache.CacheInstance = cache.RedisV8Cache(func() *redisv8.Client {
-		return redisv8.NewClient(&redisv8.Options{
-			Addr:     "10.0.11.125:6379",
-			Password: "", // no password set
-			DB:       0,  // use default DB
-		})
+func TestBool(t *testing.T) {
+	t.Run("redisv8", func(t *testing.T) {
+		setRedisv8Cache()
+		count, err := testCaseBool()
+		require.NoError(t, err)
+		fmt.Println(count)
 	})
-	users, err := testCase()
-	require.NoError(t, err)
-	fmt.Println(users)
+
+	t.Run("redisv9", func(t *testing.T) {
+		setRedisv9Cache()
+		count, err := testCaseBool()
+		require.NoError(t, err)
+		fmt.Println(count)
+	})
+	t.Run("memery", func(t *testing.T) {
+		count, err := testCaseBool()
+		require.NoError(t, err)
+		fmt.Println(count)
+	})
 
 }
