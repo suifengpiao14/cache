@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"gitlab.huishoubao.com/gopackage/cache"
+	"github.com/suifengpiao14/cache"
 )
 
 func TestMemeryCache(t *testing.T) {

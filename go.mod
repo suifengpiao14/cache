@@ -1,4 +1,4 @@
-module gitlab.huishoubao.com/gopackage/cache
+module github.com/suifengpiao14/cache
 
 go 1.20
 
