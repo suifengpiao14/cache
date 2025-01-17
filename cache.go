@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"reflect"
 	"sync"
 	"time"
 
@@ -15,9 +16,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Cache[T any] interface {
-	Get(key string, data *T) (exists bool, err error)
-	Set(key string, data T, duration time.Duration) error
+type Cache interface {
+	Get(key string, data any) (exists bool, err error)
+	Set(key string, data any, duration time.Duration) error
 }
 
 var RedisV8Getter = OnceValue(func() *reidsv8.Client {
@@ -31,7 +32,7 @@ var RedisV9Getter = OnceValue(func() *reidsv9.Client {
 	panic(err)
 })
 
-func Remember[T any](cache Cache[T], key string, duration time.Duration, dst *T, fetchFunc func() (T, error)) error {
+func Remember(cache Cache, key string, duration time.Duration, dst any, fetchFunc func() (any, error)) error {
 	md5Key := Md5Lower(key)
 	exists, err := cache.Get(md5Key, dst)
 	if err != nil {
@@ -40,25 +41,26 @@ func Remember[T any](cache Cache[T], key string, duration time.Duration, dst *T,
 	if exists { // 正常取到直接返回
 		return nil
 	}
-	*dst, err = fetchFunc()
+	data, err := fetchFunc()
 	if err != nil {
 		return err
 	}
-	err = cache.Set(md5Key, *dst, duration)
+	err = cache.Set(md5Key, data, duration)
 	if err != nil {
 		return err
 	}
+	reflect.Indirect(reflect.ValueOf(dst)).Set(reflect.Indirect(reflect.ValueOf(data)))
 	return nil
 }
 
-func RedisV8Cache[T any](client func() *reidsv8.Client) Cache[T] {
-	return _RedisV8Cache[T]{}
+func RedisV8Cache(client func() *reidsv8.Client) Cache {
+	return _RedisV8Cache{}
 }
 
-type _RedisV8Cache[T any] struct {
+type _RedisV8Cache struct {
 }
 
-func (r _RedisV8Cache[T]) Get(key string, data *T) (exists bool, err error) {
+func (r _RedisV8Cache) Get(key string, data any) (exists bool, err error) {
 	ctx := context.Background()
 	b, err := RedisV8Getter().Get(ctx, key).Bytes()
 	if err != nil {
@@ -75,7 +77,7 @@ func (r _RedisV8Cache[T]) Get(key string, data *T) (exists bool, err error) {
 
 }
 
-func (r _RedisV8Cache[T]) Set(key string, data T, duration time.Duration) (err error) {
+func (r _RedisV8Cache) Set(key string, data any, duration time.Duration) (err error) {
 	ctx := context.Background()
 	b, err := json.Marshal(data)
 	if err != nil {
@@ -88,14 +90,14 @@ func (r _RedisV8Cache[T]) Set(key string, data T, duration time.Duration) (err e
 	return nil
 }
 
-func RedisV9Cache[T any](client func() *reidsv9.Client) Cache[T] {
-	return _RedisV9Cache[T]{}
+func RedisV9Cache(client func() *reidsv9.Client) Cache {
+	return _RedisV9Cache{}
 }
 
-type _RedisV9Cache[T any] struct {
+type _RedisV9Cache struct {
 }
 
-func (r _RedisV9Cache[T]) Get(key string, data *T) (exists bool, err error) {
+func (r _RedisV9Cache) Get(key string, data any) (exists bool, err error) {
 	ctx := context.Background()
 	b, err := RedisV9Getter().Get(ctx, key).Bytes()
 	if err != nil {
@@ -112,7 +114,7 @@ func (r _RedisV9Cache[T]) Get(key string, data *T) (exists bool, err error) {
 
 }
 
-func (r _RedisV9Cache[T]) Set(key string, data T, duration time.Duration) (err error) {
+func (r _RedisV9Cache) Set(key string, data any, duration time.Duration) (err error) {
 	ctx := context.Background()
 	b, err := json.Marshal(data)
 	if err != nil {
@@ -126,24 +128,23 @@ func (r _RedisV9Cache[T]) Set(key string, data T, duration time.Duration) (err e
 }
 
 var memeryCache = cache.New(1*time.Second, 10*time.Minute) //默认 1秒缓存的内存缓存实例 常用于单次请求,某个接口、sql 结果
-type _MemeryCache[T any] struct {
+type _MemeryCache struct {
 }
 
-func MemeryCache[T any]() Cache[T] {
-	return _MemeryCache[T]{}
+func MemeryCache() Cache {
+	return _MemeryCache{}
 }
 
-func (m _MemeryCache[T]) Get(key string, dst *T) (exists bool, err error) {
-	result, found := memeryCache.Get(key)
+func (m _MemeryCache) Get(key string, dst any) (exists bool, err error) {
+	resulany, found := memeryCache.Get(key)
 	if !found {
 		return false, nil
 	}
-	*dst = result.(T)
-
+	reflect.Indirect(reflect.ValueOf(dst)).Set(reflect.Indirect(reflect.ValueOf(resulany)))
 	return true, nil
 }
 
-func (m _MemeryCache[T]) Set(key string, data T, duration time.Duration) error {
+func (m _MemeryCache) Set(key string, data any, duration time.Duration) error {
 	memeryCache.Set(key, data, duration)
 	return nil
 }
