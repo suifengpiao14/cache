@@ -26,8 +26,16 @@ type Cache interface {
 var CacheInstance Cache = MemeryCache()
 
 func Remember(key string, duration time.Duration, dst any, fetchFunc func() (any, error)) error {
+	return RememberWithCache(CacheInstance, key, duration, dst, fetchFunc)
+}
+
+func RememberUseMemoryCache(key string, duration time.Duration, dst any, fetchFunc func() (any, error)) error {
+	return RememberWithCache(MemeryCache(), key, duration, dst, fetchFunc)
+}
+
+func RememberWithCache(cache Cache, key string, duration time.Duration, dst any, fetchFunc func() (any, error)) error {
 	md5Key := Md5Lower(key)
-	exists, err := CacheInstance.Get(md5Key, dst)
+	exists, err := cache.Get(md5Key, dst)
 	if err != nil {
 		return err
 	}
@@ -38,7 +46,7 @@ func Remember(key string, duration time.Duration, dst any, fetchFunc func() (any
 	if err != nil {
 		return err
 	}
-	err = CacheInstance.Set(md5Key, data, duration)
+	err = cache.Set(md5Key, data, duration)
 	if err != nil {
 		return err
 	}
