@@ -29,7 +29,7 @@ func Remember(key string, duration time.Duration, dst any, fetchFunc func() (any
 	return RememberWithCache(CacheInstance, key, duration, dst, fetchFunc)
 }
 
-func RememberUseMemoryCache(key string, duration time.Duration, dst any, fetchFunc func() (any, error)) error {
+func RememberInMemory(key string, duration time.Duration, dst any, fetchFunc func() (any, error)) error {
 	return RememberWithCache(MemeryCache(), key, duration, dst, fetchFunc)
 }
 
