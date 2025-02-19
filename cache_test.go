@@ -36,37 +36,41 @@ func setRedisv9Cache() {
 }
 
 func testCaseStruct() (users []user, err error) {
-	key := "usercache"
+	key := "testCaseStruct"
 	users = make([]user, 0)
-	err = cache.Remember(key, 20*time.Second, &users, func() (any, error) {
+	err = cache.Remember(key, 20*time.Second, &users, func(dst *[]user) error {
 		fmt.Println("load from db")
 		data := []user{{ID: 1, Name: "suifengpiao14"}, {ID: 2, Name: "suifengpiao15"}}
-		return data, nil
+		*dst = data
+		return nil
 	})
 	return users, err
 }
 
 func testCaseInt64() (count int64, err error) {
-	key := "usercache"
-	err = cache.Remember(key, 20*time.Second, &count, func() (any, error) {
+	key := "testCaseInt64"
+	err = cache.Remember(key, 20*time.Second, &count, func(dst *int64) error {
 		fmt.Println("load from db")
-		return 52, nil
+		*dst = 52
+		return nil
 	})
 	return count, err
 }
 func testCaseInt() (count int, err error) {
-	key := "usercache"
-	err = cache.Remember(key, 20*time.Second, &count, func() (any, error) {
+	key := "testCaseInt"
+	err = cache.Remember(key, 20*time.Second, &count, func(dst *int) error {
 		fmt.Println("load from db")
-		return 52, nil
+		*dst = 52
+		return nil
 	})
 	return count, err
 }
 func testCaseBool() (exists bool, err error) {
-	key := "usercache"
-	err = cache.Remember(key, 20*time.Second, &exists, func() (any, error) {
+	key := "testCaseBool"
+	err = cache.Remember(key, 20*time.Second, &exists, func(dst *bool) error {
 		fmt.Println("load from db")
-		return true, nil
+		*dst = true
+		return nil
 	})
 	return exists, err
 }
@@ -74,63 +78,82 @@ func testCaseBool() (exists bool, err error) {
 func TestStruct(t *testing.T) {
 	t.Run("redisv8", func(t *testing.T) {
 		setRedisv8Cache()
-		users, err := testCaseStruct()
+		users1, err := testCaseStruct() //第一次加载数据
+
 		require.NoError(t, err)
-		fmt.Println(users)
+		users2, err := testCaseStruct() //第二次直接从缓存中获取
+		require.NoError(t, err)
+		require.Equal(t, users1, users2)
 	})
 
 	t.Run("redisv9", func(t *testing.T) {
 		setRedisv9Cache()
-		users, err := testCaseStruct()
+		users1, err := testCaseStruct() //第一次加载数据
 		require.NoError(t, err)
-		fmt.Println(users)
+		users2, err := testCaseStruct() //第二次直接从缓存中获取
+		require.NoError(t, err)
+		require.Equal(t, users1, users2)
 	})
 	t.Run("memery", func(t *testing.T) {
-		users, err := testCaseStruct()
+		users1, err := testCaseStruct() //第一次加载数据
 		require.NoError(t, err)
-		fmt.Println(users)
+		users2, err := testCaseStruct() //第二次直接从缓存中获取
+		require.NoError(t, err)
+		require.Equal(t, users1, users2)
 	})
 }
 
 func TestInt64(t *testing.T) {
 	t.Run("redisv8", func(t *testing.T) {
 		setRedisv8Cache()
-		count, err := testCaseInt64()
+		count1, err := testCaseInt64() //第一次加载数据
 		require.NoError(t, err)
-		fmt.Println(count)
+		count2, err := testCaseInt64() //第二次直接从缓存中获取
+		require.NoError(t, err)
+		require.Equal(t, count1, count2)
 	})
 
 	t.Run("redisv9", func(t *testing.T) {
 		setRedisv9Cache()
-		count, err := testCaseInt64()
+		count1, err := testCaseInt64() //第一次加载数据
 		require.NoError(t, err)
-		fmt.Println(count)
+		count2, err := testCaseInt64() //第二次直接从缓存中获取
+		require.NoError(t, err)
+		require.Equal(t, count1, count2)
 	})
 	t.Run("memery", func(t *testing.T) {
-		count, err := testCaseInt64()
+		count1, err := testCaseInt64() //第一次加载数据
 		require.NoError(t, err)
-		fmt.Println(count)
+		count2, err := testCaseInt64() //第二次直接从缓存中获取
+		require.NoError(t, err)
+		require.Equal(t, count1, count2)
 	})
 
 }
 func TestInt(t *testing.T) {
 	t.Run("redisv8", func(t *testing.T) {
 		setRedisv8Cache()
-		count, err := testCaseInt()
+		count1, err := testCaseInt() //第一次加载数据
 		require.NoError(t, err)
-		fmt.Println(count)
+		count2, err := testCaseInt() //第二次直接从缓存中获取
+		require.NoError(t, err)
+		require.Equal(t, count1, count2)
 	})
 
 	t.Run("redisv9", func(t *testing.T) {
 		setRedisv9Cache()
-		count, err := testCaseInt()
+		count1, err := testCaseInt() //第一次加载数据
 		require.NoError(t, err)
-		fmt.Println(count)
+		count2, err := testCaseInt() //第二次直接从缓存中获取
+		require.NoError(t, err)
+		require.Equal(t, count1, count2)
 	})
 	t.Run("memery", func(t *testing.T) {
-		count, err := testCaseInt()
+		count1, err := testCaseInt() //第一次加载数据
 		require.NoError(t, err)
-		fmt.Println(count)
+		count2, err := testCaseInt() //第二次直接从缓存中获取
+		require.NoError(t, err)
+		require.Equal(t, count1, count2)
 	})
 
 }
@@ -138,21 +161,27 @@ func TestInt(t *testing.T) {
 func TestBool(t *testing.T) {
 	t.Run("redisv8", func(t *testing.T) {
 		setRedisv8Cache()
-		count, err := testCaseBool()
+		count1, err := testCaseBool() //第一次加载数据
 		require.NoError(t, err)
-		fmt.Println(count)
+		count2, err := testCaseBool() //第二次直接从缓存中获取
+		require.NoError(t, err)
+		require.Equal(t, count1, count2)
 	})
 
 	t.Run("redisv9", func(t *testing.T) {
 		setRedisv9Cache()
-		count, err := testCaseBool()
+		count1, err := testCaseBool() //第一次加载数据
 		require.NoError(t, err)
-		fmt.Println(count)
+		count2, err := testCaseBool() //第二次直接从缓存中获取
+		require.NoError(t, err)
+		require.Equal(t, count1, count2)
 	})
 	t.Run("memery", func(t *testing.T) {
-		count, err := testCaseBool()
+		count1, err := testCaseBool() //第一次加载数据
 		require.NoError(t, err)
-		fmt.Println(count)
+		count2, err := testCaseBool() //第二次直接从缓存中获取
+		require.NoError(t, err)
+		require.Equal(t, count1, count2)
 	})
 
 }
