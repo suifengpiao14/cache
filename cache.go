@@ -25,15 +25,15 @@ type Cache interface {
 
 var CacheInstance Cache = MemeryCache()
 
-func Remember[T any](key string, duration time.Duration, dst *T, fetchFunc func(dst *T) error) error {
+func Remember(key string, duration time.Duration, dst any, fetchFunc func() (any, error)) error {
 	return RememberWithCache(CacheInstance, key, duration, dst, fetchFunc)
 }
 
-func RememberInMemory[T any](key string, duration time.Duration, dst *T, fetchFunc func(dst *T) error) error {
+func RememberInMemory(key string, duration time.Duration, dst any, fetchFunc func() (any, error)) error {
 	return RememberWithCache(MemeryCache(), key, duration, dst, fetchFunc)
 }
 
-func RememberWithCache[T any](cache Cache, key string, duration time.Duration, dst *T, fetchFunc func(dst *T) error) error {
+func RememberWithCache(cache Cache, key string, duration time.Duration, dst any, fetchFunc func() (any, error)) error {
 	md5Key := Md5Lower(key)
 	exists, err := cache.Get(md5Key, dst)
 	if err != nil {
@@ -42,14 +42,15 @@ func RememberWithCache[T any](cache Cache, key string, duration time.Duration, d
 	if exists { // 正常取到直接返回
 		return nil
 	}
-	err = fetchFunc(dst)
+	data, err := fetchFunc()
 	if err != nil {
 		return err
 	}
-	err = cache.Set(md5Key, dst, duration)
+	err = cache.Set(md5Key, data, duration)
 	if err != nil {
 		return err
 	}
+	SetReflectValue(dst, data)
 	return nil
 }
 
