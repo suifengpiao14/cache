@@ -1,6 +1,6 @@
 module github.com/suifengpiao14/cache
 
-go 1.20
+go 1.22
 
 require (
 	github.com/go-redis/redis/v8 v8.11.5

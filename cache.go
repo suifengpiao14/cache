@@ -25,15 +25,16 @@ type Cache interface {
 
 var CacheInstance Cache = MemeryCache()
 
-func Remember(key string, duration time.Duration, dst any, fetchFunc func() (any, error)) error {
-	return RememberWithCache(CacheInstance, key, duration, dst, fetchFunc)
+func Remember[T any](key string, dst *T, fetchFunc func(dst *T) (duration time.Duration, err error)) error {
+	return RememberWithCacheInstance(CacheInstance, key, dst, fetchFunc)
 }
 
-func RememberInMemory(key string, duration time.Duration, dst any, fetchFunc func() (any, error)) error {
-	return RememberWithCache(MemeryCache(), key, duration, dst, fetchFunc)
+func RememberInMemory[T any](key string, dst *T, fetchFunc func(data *T) (duration time.Duration, err error)) error {
+	return RememberWithCacheInstance(MemeryCache(), key, dst, fetchFunc)
 }
 
-func RememberWithCache(cache Cache, key string, duration time.Duration, dst any, fetchFunc func() (any, error)) error {
+// RememberWithCacheInstance 传入缓存实例，key,目标对象和获取数据的函数，将过期时间转移到回调函数返回值中，方便过期时间由回调函数控制(如获取微信access_token时，过期时间由微信官方返回)
+func RememberWithCacheInstance[T any](cache Cache, key string, dst *T, fetchFunc func(dst *T) (duration time.Duration, err error)) error {
 	md5Key := Md5Lower(key)
 	exists, err := cache.Get(md5Key, dst)
 	if err != nil {
@@ -42,21 +43,21 @@ func RememberWithCache(cache Cache, key string, duration time.Duration, dst any,
 	if exists { // 正常取到直接返回
 		return nil
 	}
-	data, err := fetchFunc()
+	duration, err := fetchFunc(dst)
 	if err != nil {
 		return err
 	}
-	err = cache.Set(md5Key, data, duration)
+	err = cache.Set(md5Key, dst, duration)
 	if err != nil {
 		return err
 	}
-	SetReflectValue(dst, data)
+	//SetReflectValue(dst, data)
 	return nil
 }
 
 func RedisV8Cache(client func() *reidsv8.Client) Cache {
 	return _RedisV8Cache{
-		client: OnceValue(client),
+		client: sync.OnceValue(client),
 	}
 }
 
@@ -96,7 +97,7 @@ func (r _RedisV8Cache) Set(key string, data any, duration time.Duration) (err er
 
 func RedisV9Cache(client func() *reidsv9.Client) Cache {
 	return _RedisV9Cache{
-		client: OnceValue(client),
+		client: sync.OnceValue(client),
 	}
 }
 
@@ -152,39 +153,10 @@ func (m _MemeryCache) Get(key string, dst any) (exists bool, err error) {
 }
 
 func (m _MemeryCache) Set(key string, data any, duration time.Duration) error {
-	memeryCache.Set(key, data, duration)
+	resulany := reflect.New(reflect.TypeOf(data).Elem()).Interface()
+	SetReflectValue(resulany, data)
+	memeryCache.Set(key, resulany, duration) // 这个地方需要复制一份data,其效果有待验证
 	return nil
-}
-
-// 拷贝 sync.oncefunc.go 低版本go 不支持 go 1.21 版本才有，直接复制
-// OnceValue returns a function that invokes f only once and returns the value
-// returned by f. The returned function may be called concurrently.
-//
-// If f panics, the returned function will panic with the same value on every call.
-func OnceValue[T any](f func() T) func() T {
-	var (
-		once   sync.Once
-		valid  bool
-		p      any
-		result T
-	)
-	g := func() {
-		defer func() {
-			p = recover()
-			if !valid {
-				panic(p)
-			}
-		}()
-		result = f()
-		valid = true
-	}
-	return func() T {
-		once.Do(g)
-		if !valid {
-			panic(p)
-		}
-		return result
-	}
 }
 
 // Md5Lower md5 小写
