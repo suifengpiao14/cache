@@ -5,7 +5,9 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -35,8 +37,12 @@ func RememberInMemory[T any](key string, dst *T, fetchFunc func(data *T) (durati
 
 // RememberWithCacheInstance 传入缓存实例，key,目标对象和获取数据的函数，将过期时间转移到回调函数返回值中，方便过期时间由回调函数控制(如获取微信access_token时，过期时间由微信官方返回)
 func RememberWithCacheInstance[T any](cache Cache, key string, dst *T, fetchFunc func(dst *T) (duration time.Duration, err error)) error {
-	md5Key := Md5Lower(key)
-	exists, err := cache.Get(md5Key, dst)
+	cacheKey := strings.ReplaceAll(key, " ", "_")
+	if len(cacheKey) > 32 {
+		prefix, suffix := cacheKey[:32], cacheKey[32:]
+		cacheKey = fmt.Sprintf("%s_%s", prefix, Md5Lower(suffix))
+	}
+	exists, err := cache.Get(cacheKey, dst)
 	if err != nil {
 		return err
 	}
@@ -47,7 +53,7 @@ func RememberWithCacheInstance[T any](cache Cache, key string, dst *T, fetchFunc
 	if err != nil {
 		return err
 	}
-	err = cache.Set(md5Key, dst, duration)
+	err = cache.Set(cacheKey, dst, duration)
 	if err != nil {
 		return err
 	}
