@@ -35,7 +35,7 @@ func RememberInMemory[T any](key string, dst *T, fetchFunc func(data *T) (durati
 	return RememberWithCacheInstance(MemeryCache(), key, dst, fetchFunc)
 }
 
-// FormatCacheKeyFn 格式化缓存key的函数，默认将空格替换为下划线，如果长度超过32个字符，则截取前32位加上后缀的md5值作为key
+// FormatCacheKeyFn 格式化缓存key的函数，默认将空格替换为下划线，如果长度超过32个字符，则截取前32位加上后缀的md5值作为key(默认方案会保留key前缀,方便日志追踪，又不会过长)
 var FormatCacheKeyFn = func(key string) string {
 	cacheKey := strings.ReplaceAll(key, " ", "_")
 	if len(cacheKey) > 32 {
