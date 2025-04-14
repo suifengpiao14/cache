@@ -35,13 +35,19 @@ func RememberInMemory[T any](key string, dst *T, fetchFunc func(data *T) (durati
 	return RememberWithCacheInstance(MemeryCache(), key, dst, fetchFunc)
 }
 
-// RememberWithCacheInstance 传入缓存实例，key,目标对象和获取数据的函数，将过期时间转移到回调函数返回值中，方便过期时间由回调函数控制(如获取微信access_token时，过期时间由微信官方返回)
-func RememberWithCacheInstance[T any](cache Cache, key string, dst *T, fetchFunc func(dst *T) (duration time.Duration, err error)) error {
+// FormatCacheKeyFn 格式化缓存key的函数，默认将空格替换为下划线，如果长度超过32个字符，则截取前32位加上后缀的md5值作为key
+var FormatCacheKeyFn = func(key string) string {
 	cacheKey := strings.ReplaceAll(key, " ", "_")
 	if len(cacheKey) > 32 {
 		prefix, suffix := cacheKey[:32], cacheKey[32:]
 		cacheKey = fmt.Sprintf("%s_%s", prefix, Md5Lower(suffix))
 	}
+	return cacheKey
+}
+
+// RememberWithCacheInstance 传入缓存实例，key,目标对象和获取数据的函数，将过期时间转移到回调函数返回值中，方便过期时间由回调函数控制(如获取微信access_token时，过期时间由微信官方返回)
+func RememberWithCacheInstance[T any](cache Cache, key string, dst *T, fetchFunc func(dst *T) (duration time.Duration, err error)) error {
+	cacheKey := FormatCacheKeyFn(key)
 	exists, err := cache.Get(cacheKey, dst)
 	if err != nil {
 		return err
