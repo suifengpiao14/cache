@@ -37,40 +37,39 @@ func setRedisv9Cache() {
 
 func testCaseStruct() (users []user, err error) {
 	key := "testCaseStruct"
-	users = make([]user, 0) //
-	err = cache.Remember(key, &users, func(dst *[]user) (duration time.Duration, err error) {
+	users, err = cache.Remember(key, func() (dst []user, duration time.Duration, err error) {
 		fmt.Println("load from db")
 		data := []user{{ID: 1, Name: "suifengpiao14"}, {ID: 2, Name: "suifengpiao15"}}
-		*dst = data
-		return 20 * time.Second, nil
+
+		return data, 20 * time.Second, nil
 	})
 	return users, err
 }
 
 func testCaseInt64() (count int64, err error) {
 	key := "testCaseInt64"
-	err = cache.Remember(key, &count, func(dst *int64) (duration time.Duration, err error) {
+	count, err = cache.Remember(key, func() (dst int64, duration time.Duration, err error) {
 		fmt.Println("load from db")
-		*dst = 52
-		return 20 * time.Second, nil
+		dst = 52
+		return dst, 20 * time.Second, nil
 	})
 	return count, err
 }
 func testCaseInt() (count int, err error) {
 	key := "testCaseInt"
-	err = cache.Remember(key, &count, func(dst *int) (duration time.Duration, err error) {
+	count, err = cache.Remember(key, func() (dst int, duration time.Duration, err error) {
 		fmt.Println("load from db")
-		*dst = 52
-		return 20 * time.Second, nil
+		dst = 52
+		return dst, 20 * time.Second, nil
 	})
 	return count, err
 }
 func testCaseBool() (exists bool, err error) {
 	key := "testCaseBool"
-	err = cache.Remember(key, &exists, func(dst *bool) (duration time.Duration, err error) {
+	exists, err = cache.Remember(key, func() (dst bool, duration time.Duration, err error) {
 		fmt.Println("load from db")
-		*dst = true
-		return 20 * time.Second, nil
+		dst = true
+		return dst, 20 * time.Second, nil
 	})
 	return exists, err
 }

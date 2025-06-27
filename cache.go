@@ -27,12 +27,12 @@ type Cache interface {
 
 var CacheInstance Cache = MemeryCache()
 
-func Remember[T any](key string, dst *T, fetchFunc func(dst *T) (duration time.Duration, err error)) error {
-	return RememberWithCacheInstance(CacheInstance, key, dst, fetchFunc)
+func Remember[T any](key string, fetchFunc func() (data T, duration time.Duration, err error)) (data T, err error) {
+	return RememberWithCacheInstance(CacheInstance, key, fetchFunc)
 }
 
-func RememberInMemory[T any](key string, dst *T, fetchFunc func(data *T) (duration time.Duration, err error)) error {
-	return RememberWithCacheInstance(MemeryCache(), key, dst, fetchFunc)
+func RememberInMemory[T any](key string, fetchFunc func() (data T, duration time.Duration, err error)) (data T, err error) {
+	return RememberWithCacheInstance(MemeryCache(), key, fetchFunc)
 }
 
 // FormatCacheKeyFn 格式化缓存key的函数，默认将空格替换为下划线，如果长度超过32个字符，则截取前32位加上后缀的md5值作为key(默认方案会保留key前缀,方便日志追踪，又不会过长)
@@ -46,25 +46,26 @@ var FormatCacheKeyFn = func(key string) string {
 }
 
 // RememberWithCacheInstance 传入缓存实例，key,目标对象和获取数据的函数，将过期时间转移到回调函数返回值中，方便过期时间由回调函数控制(如获取微信access_token时，过期时间由微信官方返回)
-func RememberWithCacheInstance[T any](cache Cache, key string, dst *T, fetchFunc func(dst *T) (duration time.Duration, err error)) error {
+func RememberWithCacheInstance[T any](cache Cache, key string, fetchFunc func() (data T, duration time.Duration, err error)) (data T, err error) {
 	cacheKey := FormatCacheKeyFn(key)
-	exists, err := cache.Get(cacheKey, dst)
+	dataRef := new(T)
+	exists, err := cache.Get(cacheKey, dataRef)
 	if err != nil {
-		return err
+		return data, err
 	}
 	if exists { // 正常取到直接返回
-		return nil
+		return *dataRef, nil
 	}
-	duration, err := fetchFunc(dst)
+	data, duration, err := fetchFunc()
 	if err != nil {
-		return err
+		return data, err
 	}
-	err = cache.Set(cacheKey, dst, duration)
+	err = cache.Set(cacheKey, &data, duration) // 使用&data 保证存储和取出的一致性（确保内存存储一致性）
 	if err != nil {
-		return err
+		return data, err
 	}
 	//SetReflectValue(dst, data)
-	return nil
+	return data, nil
 }
 
 func RedisV8Cache(client func() *reidsv8.Client) Cache {
