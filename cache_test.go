@@ -183,3 +183,18 @@ func TestBool(t *testing.T) {
 	})
 
 }
+
+func TestRememberInMemory(t *testing.T) {
+	countRef, err := cache.RememberInMemory("test_ref", func() (data *int, duration time.Duration, err error) {
+		c := 12
+		return &c, 20 * time.Second, nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, 12, *countRef)
+	countRef1, err := cache.RememberInMemory("test_ref", func() (data *int, duration time.Duration, err error) {
+		c := 12
+		return &c, 20 * time.Second, nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, 12, *countRef1)
+}
